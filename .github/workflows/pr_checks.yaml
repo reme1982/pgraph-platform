@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: PR Checks
+name: PR Checks and Tests
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
     paths:
       - 'app/**'
-      - 'data_ingestion/**'
+      - 'skills/**'
       - 'tests/**'
-      - 'deployment/**'
+      - 'pyproject.toml'
       - 'uv.lock'
 
 jobs:
@@ -30,20 +33,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
-      id-token: 'write'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.WIF_POOL_ID }}/providers/${{ secrets.WIF_PROVIDER_ID }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
-          create_credentials_file: true
-          project_id: ${{ vars.CICD_PROJECT_ID }}
-
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
@@ -57,7 +49,13 @@ jobs:
         run: uv sync --locked
 
       - name: Run unit tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENAI_USE_VERTEXAI: "False"
         run: uv run pytest tests/unit
 
       - name: Run integration tests
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENAI_USE_VERTEXAI: "False"
         run: uv run pytest tests/integration
